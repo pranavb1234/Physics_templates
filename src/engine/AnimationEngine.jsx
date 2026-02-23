@@ -181,14 +181,21 @@ function PendulumCanvasOverlay({ metrics }) {
         <defs>
           <marker
             id="thetaArcHead"
-            markerWidth="4.4"
-            markerHeight="4.4"
-            refX="3.7"
-            refY="2.2"
+            markerWidth="2.2"
+            markerHeight="2.2"
+            refX="1.95"
+            refY="1.1"
             orient="auto"
             markerUnits="userSpaceOnUse"
           >
-            <path d="M0,0 L4.4,2.2 L0,4.4 Z" fill="#1f2937" />
+            <path
+              d="M0.2,0.2 L1.9,1.1 L0.2,2.0"
+              fill="none"
+              stroke="#1f2937"
+              strokeWidth="0.22"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </marker>
         </defs>
 
@@ -198,7 +205,7 @@ function PendulumCanvasOverlay({ metrics }) {
             <path
               d={arcPath}
               stroke="#1f2937"
-              strokeWidth="0.34"
+              strokeWidth="0.29"
               strokeLinecap="round"
               strokeLinejoin="round"
               fill="none"
