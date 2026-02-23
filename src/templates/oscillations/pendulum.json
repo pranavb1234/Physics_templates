@@ -1,0 +1,15 @@
+﻿{
+  "id": "osc_pendulum_v1",
+  "label": "pendulum",
+  "chapter": "oscillations",
+  "scene": "pendulum",
+  "motion": "pendulum_shm",
+  "controls": {
+    "amplitude": { "min": 0.1, "max": 1.2, "default": 0.6 },
+    "speed": { "min": 0.5, "max": 3.0, "default": 1.0 }
+  },
+  "visual": {
+    "overlayImage": true,
+    "backgroundOpacity": 0.3
+  }
+}
