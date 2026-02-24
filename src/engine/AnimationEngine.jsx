@@ -9,7 +9,8 @@ function RuntimeAnimator({
   playing,
   onSpringMetrics,
   onPendulumMetrics,
-  onParticleMetrics
+  onParticleMetrics,
+  onDoubleSpringMetrics
 }) {
   const refs = {
     pendulumGroup: useRef(null),
@@ -22,9 +23,17 @@ function RuntimeAnimator({
     forceArrow: useRef(null),
     particle: useRef(null),
     particleXArrow: useRef(null),
+    doubleMass: useRef(null),
+    leftSpring: useRef(null),
+    rightSpring: useRef(null),
+    forceLeftArrow: useRef(null),
+    forceRightArrow: useRef(null),
+    displacementDoubleArrow: useRef(null),
+    currentGuide: useRef(null),
     springMetrics: useRef({ x: 0, force: 0, k: 0, meanX: 0, massX: 0 }),
     pendulumMetrics: useRef({ theta: 0, omega: 0 }),
-    particleMetrics: useRef({ x: 0, amplitude: 1, omega: 1, phase: 0, velocity: 0 })
+    particleMetrics: useRef({ x: 0, amplitude: 1, omega: 1, phase: 0, velocity: 0 }),
+    doubleSpringMetrics: useRef({ x: 0, force: 0, k: 1, massX: 0, direction: "right" })
   };
   const lastMetricsUpdate = useRef(0);
 
@@ -50,6 +59,10 @@ function RuntimeAnimator({
 
       if (template.scene === "particle_shm" && onParticleMetrics) {
         onParticleMetrics({ ...refs.particleMetrics.current });
+      }
+
+      if (template.scene === "double_spring_mass" && onDoubleSpringMetrics) {
+        onDoubleSpringMetrics({ ...refs.doubleSpringMetrics.current });
       }
     }
   });
@@ -100,18 +113,18 @@ function SpringMassCanvasOverlay({ metrics }) {
         <div style={{ ...chipStyle, fontWeight: 700, color: "#be123c" }}>F = -kx = {metrics.force.toFixed(2)}</div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "6%", top: "24%" }}>fixed wall</div>
-      <div style={{ ...calloutStyle, left: "22%", top: "24%" }}>spring (k)</div>
-      <div style={{ ...calloutStyle, left: "58%", top: "24%" }}>block (mass m)</div>
-      <div style={{ ...calloutStyle, left: "50%", top: "44%", transform: "translateX(-50%)" }}>
+      <div style={{ ...calloutStyle, left: "15%", top: "32%" }}>fixed wall</div>
+      <div style={{ ...calloutStyle, left: "38%", top: "32%" }}>spring (k)</div>
+      <div style={{ ...calloutStyle, left: "56%", top: "45%" }}>block (mass m)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "32%", transform: "translateX(-50%)" }}>
         mean position (x = 0)
       </div>
-      <div style={{ ...calloutStyle, left: "50%", top: "12%", transform: "translateX(-50%)" }}>displacement x</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "58%", transform: "translateX(-50%)" }}>displacement x</div>
       <div
         style={{
           ...calloutStyle,
           left: "62%",
-          top: "59%",
+          top: "68%",
           color: "#be123c",
           border: "1px solid #f0b7c3"
         }}
@@ -148,16 +161,6 @@ function PendulumCanvasOverlay({ metrics }) {
   const labelAngle = thetaClamped * 0.5;
   const labelX = cx + (radius + 5.2) * Math.sin(labelAngle);
   const labelY = cy + (radius + 5.2) * Math.cos(labelAngle);
-  const calloutStyle = {
-    position: "absolute",
-    fontSize: 12,
-    fontWeight: 600,
-    border: "1px solid #d0d7de",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.94)",
-    padding: "3px 8px",
-    whiteSpace: "nowrap"
-  };
 
   const directionLabel =
     Math.abs(omega) < 0.02
@@ -225,12 +228,105 @@ function PendulumCanvasOverlay({ metrics }) {
         </div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "34%", top: "15%" }}>support</div>
-      <div style={{ ...calloutStyle, left: "49%", top: "22%", transform: "translateX(-50%)" }}>pivot</div>
-      <div style={{ ...calloutStyle, left: "55%", top: "43%" }}>mean position (dashed)</div>
-      <div style={{ ...calloutStyle, left: "26%", top: "36%" }}>string</div>
-      <div style={{ ...calloutStyle, left: "26%", top: "57%" }}>bob (mass m)</div>
-      <div style={{ ...calloutStyle, left: "40%", top: "73%" }}>tangential direction</div>
+      <div
+        style={{
+          position: "absolute",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid #d0d7de",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.94)",
+          padding: "3px 8px",
+          whiteSpace: "nowrap",
+          left: "50%",
+          top: "2%",
+          transform: "translateX(-50%)"
+        }}
+      >
+        support
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid #d0d7de",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.94)",
+          padding: "3px 8px",
+          whiteSpace: "nowrap",
+          left: "50%",
+          top: "12%",
+          transform: "translateX(-50%)"
+        }}
+      >
+        pivot
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid #d0d7de",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.94)",
+          padding: "3px 8px",
+          whiteSpace: "nowrap",
+          left: "50%",
+          top: "62%",
+          transform: "translateX(-50%)"
+        }}
+      >
+        mean position (dashed)
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid #d0d7de",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.94)",
+          padding: "3px 8px",
+          whiteSpace: "nowrap",
+          left: "18%",
+          top: "42%"
+        }}
+      >
+        string
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid #d0d7de",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.94)",
+          padding: "3px 8px",
+          whiteSpace: "nowrap",
+          left: "18%",
+          top: "60%"
+        }}
+      >
+        bob (mass m)
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          fontSize: 12,
+          fontWeight: 600,
+          border: "1px solid #d0d7de",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.94)",
+          padding: "3px 8px",
+          whiteSpace: "nowrap",
+          left: "35%",
+          top: "68%"
+        }}
+      >
+        tangential direction
+      </div>
 
       <svg
         viewBox="0 0 100 100"
@@ -359,11 +455,12 @@ function ParticleCanvasOverlay({ metrics }) {
       <div
         style={{
           position: "absolute",
-          left: "20%",
-          top: "60%",
-          transform: "translateX(-50%)",
-          fontSize: 24,
-          fontWeight: 600
+          left: "9%",
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: 18,
+          fontWeight: 700,
+          color: "#1f2937"
         }}
       >
         -A
@@ -372,10 +469,11 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "60%",
-          transform: "translateX(-50%)",
-          fontSize: 24,
-          fontWeight: 600
+          top: "50%",
+          transform: "translateX(-50%) translateY(-50%)",
+          fontSize: 18,
+          fontWeight: 700,
+          color: "#1f2937"
         }}
       >
         O
@@ -383,11 +481,12 @@ function ParticleCanvasOverlay({ metrics }) {
       <div
         style={{
           position: "absolute",
-          left: "80%",
-          top: "60%",
-          transform: "translateX(-50%)",
-          fontSize: 24,
-          fontWeight: 600
+          right: "9%",
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: 18,
+          fontWeight: 700,
+          color: "#1f2937"
         }}
       >
         +A
@@ -397,7 +496,7 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "71%",
+          bottom: "8%",
           transform: "translateX(-50%)",
           fontSize: 13,
           fontWeight: 700,
@@ -414,9 +513,9 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "39%",
+          top: "8%",
           transform: "translateX(-50%)",
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 600,
           background: "rgba(255,255,255,0.9)",
           border: "1px solid #d0d7de",
@@ -431,7 +530,7 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "78%",
+          bottom: "2%",
           transform: "translateX(-50%)",
           fontSize: 13,
           fontWeight: 600,
@@ -443,6 +542,54 @@ function ParticleCanvasOverlay({ metrics }) {
       >
         oscillation limits between -A and +A
       </div>
+    </div>
+  );
+}
+
+function DoubleSpringCanvasOverlay({ metrics }) {
+  const chipStyle = {
+    padding: "4px 8px",
+    borderRadius: 999,
+    border: "1px solid #d0d7de",
+    background: "rgba(255,255,255,0.94)",
+    fontSize: 13,
+    fontWeight: 600
+  };
+  const calloutStyle = {
+    position: "absolute",
+    fontSize: 12,
+    fontWeight: 600,
+    border: "1px solid #d0d7de",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.94)",
+    padding: "3px 8px",
+    whiteSpace: "nowrap"
+  };
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        color: "#1f2937"
+      }}
+    >
+      <div style={{ position: "absolute", top: 12, right: 12, display: "grid", gap: 6, justifyItems: "end" }}>
+        <div style={chipStyle}>x = {metrics.x.toFixed(2)}</div>
+        <div style={{ ...chipStyle, color: "#be123c", fontWeight: 700 }}>Fnet = -2kx = {metrics.force.toFixed(2)}</div>
+      </div>
+
+      <div style={{ ...calloutStyle, left: "17%", top: "23%" }}>left spring (k)</div>
+      <div style={{ ...calloutStyle, left: "72%", top: "23%", transform: "translateX(-50%)" }}>right spring (k)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "18%", transform: "translateX(-50%)" }}>block (mass m)</div>
+      <div style={{ ...calloutStyle, left: "42%", top: "34%" }}>F1</div>
+      <div style={{ ...calloutStyle, left: "57%", top: "34%" }}>F2</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "57%", transform: "translateX(-50%)" }}>
+        O (equilibrium)
+      </div>
+      <div style={{ ...calloutStyle, left: "50%", top: "86%", transform: "translateX(-50%)" }}>displacement x</div>
     </div>
   );
 }
@@ -522,6 +669,32 @@ function ParticleInfo({ metrics }) {
   );
 }
 
+function DoubleSpringInfo({ metrics }) {
+  const directionText =
+    Math.abs(metrics.x) < 0.01
+      ? "At equilibrium, both springs are equally stretched/compressed and net restoring force is near zero."
+      : metrics.x > 0
+        ? "Mass is displaced right: both F1 and F2 act left toward O."
+        : "Mass is displaced left: both F1 and F2 act right toward O.";
+
+  return (
+    <div
+      style={{
+        borderTop: "1px solid #d0d7de",
+        padding: "10px 12px",
+        background: "#ffffff",
+        color: "#1f2937",
+        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        fontSize: 13,
+        lineHeight: 1.4
+      }}
+    >
+      The mass is connected between two identical springs of constant k. If displaced by x from equilibrium O, both
+      springs produce restoring forces toward O. So the net restoring force is Fnet = -(k + k)x = -2kx. {directionText}
+    </div>
+  );
+}
+
 export default function AnimationEngine({ template, params, playing }) {
   const backgroundOpacity = useMemo(
     () => template?.visual?.backgroundOpacity ?? 0.2,
@@ -530,7 +703,8 @@ export default function AnimationEngine({ template, params, playing }) {
   const isSpringMass = template?.scene === "spring_mass";
   const isPendulum = template?.scene === "pendulum";
   const isParticle = template?.scene === "particle_shm";
-  const isDiagram2D = isSpringMass || isPendulum || isParticle;
+  const isDoubleSpring = template?.scene === "double_spring_mass";
+  const isDiagram2D = isSpringMass || isPendulum || isParticle || isDoubleSpring;
 
   const [springMetrics, setSpringMetrics] = useState({ x: 0, force: 0, k: 0, meanX: 0, massX: 0 });
   const [pendulumMetrics, setPendulumMetrics] = useState({ theta: 0, omega: 0 });
@@ -540,6 +714,13 @@ export default function AnimationEngine({ template, params, playing }) {
     omega: 1,
     phase: 0,
     velocity: 0
+  });
+  const [doubleSpringMetrics, setDoubleSpringMetrics] = useState({
+    x: 0,
+    force: 0,
+    k: 1,
+    massX: 0,
+    direction: "right"
   });
 
   if (!template) return <div>No template loaded.</div>;
@@ -564,6 +745,8 @@ export default function AnimationEngine({ template, params, playing }) {
                 ? { position: [0, 0, 10], zoom: 148 }
                 : isParticle
                   ? { position: [0, 0, 10], zoom: 155 }
+                  : isDoubleSpring
+                    ? { position: [0, -0.05, 10], zoom: 150 }
                   : { position: [0, 0.7, 4], fov: 50 }
           }
         >
@@ -574,17 +757,20 @@ export default function AnimationEngine({ template, params, playing }) {
             onSpringMetrics={isSpringMass ? setSpringMetrics : undefined}
             onPendulumMetrics={isPendulum ? setPendulumMetrics : undefined}
             onParticleMetrics={isParticle ? setParticleMetrics : undefined}
+            onDoubleSpringMetrics={isDoubleSpring ? setDoubleSpringMetrics : undefined}
           />
         </Canvas>
 
         {isSpringMass && <SpringMassCanvasOverlay metrics={springMetrics} />}
         {isPendulum && <PendulumCanvasOverlay metrics={pendulumMetrics} />}
         {isParticle && <ParticleCanvasOverlay metrics={particleMetrics} />}
+        {isDoubleSpring && <DoubleSpringCanvasOverlay metrics={doubleSpringMetrics} />}
       </div>
 
       {isSpringMass && <SpringMassInfo metrics={springMetrics} />}
       {isPendulum && <PendulumInfo metrics={pendulumMetrics} />}
       {isParticle && <ParticleInfo metrics={particleMetrics} />}
+      {isDoubleSpring && <DoubleSpringInfo metrics={doubleSpringMetrics} />}
     </div>
   );
 }

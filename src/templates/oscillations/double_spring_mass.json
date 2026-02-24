@@ -1,0 +1,17 @@
+{
+  "id": "osc_double_spring_mass_v1",
+  "label": "double_spring_mass",
+  "chapter": "oscillations",
+  "scene": "double_spring_mass",
+  "motion": "double_spring_shm",
+  "controls": {
+    "amplitude": { "min": 0.1, "max": 0.9, "default": 0.35 },
+    "speed": { "min": 0.5, "max": 3.0, "default": 1.2 },
+    "k": { "min": 0.5, "max": 3.0, "default": 1.0 },
+    "phase": { "min": 0.0, "max": 6.28, "default": 0.0 }
+  },
+  "visual": {
+    "overlayImage": false,
+    "backgroundOpacity": 0.2
+  }
+}
