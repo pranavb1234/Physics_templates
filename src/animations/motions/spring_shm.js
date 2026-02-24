@@ -30,7 +30,7 @@ export function springMotion({ time, params, refs }) {
 
   if (refs.forceArrow.current) {
     const size = Math.max(0.04, Math.abs(force) * 0.2);
-    refs.forceArrow.current.position.set(massX, -0.74, 0);
+    refs.forceArrow.current.position.set(massX, -0.46, 0);
     refs.forceArrow.current.rotation.z = force >= 0 ? 0 : Math.PI;
     refs.forceArrow.current.scale.set(size, 1, 1);
   }

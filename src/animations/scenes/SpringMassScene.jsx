@@ -89,7 +89,7 @@ export default function SpringMassScene({ refs }) {
         </mesh>
       </group>
 
-      <group ref={refs.forceArrow} position={[meanX + 0.35, -0.74, 0]}>
+      <group ref={refs.forceArrow} position={[meanX + 0.35, -0.46, 0]}>
         <mesh position={[0.5, 0, 0]}>
           <boxGeometry args={[1, 0.03, 0.02]} />
           <meshStandardMaterial color="#e11d48" />

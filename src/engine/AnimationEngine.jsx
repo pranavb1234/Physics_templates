@@ -100,18 +100,18 @@ function SpringMassCanvasOverlay({ metrics }) {
         <div style={{ ...chipStyle, fontWeight: 700, color: "#be123c" }}>F = -kx = {metrics.force.toFixed(2)}</div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "7%", top: "31%" }}>fixed wall</div>
-      <div style={{ ...calloutStyle, left: "24%", top: "31%" }}>spring (k)</div>
-      <div style={{ ...calloutStyle, left: "52%", top: "31%" }}>block (mass m)</div>
+      <div style={{ ...calloutStyle, left: "6%", top: "24%" }}>fixed wall</div>
+      <div style={{ ...calloutStyle, left: "22%", top: "24%" }}>spring (k)</div>
+      <div style={{ ...calloutStyle, left: "58%", top: "24%" }}>block (mass m)</div>
       <div style={{ ...calloutStyle, left: "50%", top: "44%", transform: "translateX(-50%)" }}>
         mean position (x = 0)
       </div>
-      <div style={{ ...calloutStyle, left: "50%", top: "21%", transform: "translateX(-50%)" }}>displacement x</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "12%", transform: "translateX(-50%)" }}>displacement x</div>
       <div
         style={{
           ...calloutStyle,
-          left: "59%",
-          top: "66%",
+          left: "62%",
+          top: "59%",
           color: "#be123c",
           border: "1px solid #f0b7c3"
         }}
