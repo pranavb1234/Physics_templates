@@ -7,6 +7,7 @@ export default function SpringMassScene({ refs }) {
   const meanX = 0.35;
   const blockWidth = 0.52;
   const baseSpringLength = meanX - anchorX - blockWidth * 0.5;
+  const sceneOffsetY = -0.38;
 
   const springCurve = useMemo(() => {
     const turns = 10;
@@ -25,7 +26,7 @@ export default function SpringMassScene({ refs }) {
   }, [baseSpringLength]);
 
   return (
-    <group>
+    <group position={[0, sceneOffsetY, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.86, -0.01]}>
         <planeGeometry args={[7, 2.8]} />
         <meshStandardMaterial color="#f5f7fa" />

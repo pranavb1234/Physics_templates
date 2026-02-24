@@ -1,19 +1,57 @@
-﻿export default function ControlPanel({ template, params, onChange, playing, onTogglePlay }) {
+export default function ControlPanel({ template, params, onChange, playing, onTogglePlay }) {
   if (!template) return null;
 
   const controls = template.controls ?? {};
 
   return (
-    <div style={{ width: 300, padding: 16, background: "#111", color: "#eee", fontFamily: "sans-serif" }}>
-      <h3 style={{ marginTop: 0 }}>Controls</h3>
-      <button onClick={onTogglePlay} style={{ marginBottom: 12, padding: "6px 10px" }}>
-        {playing ? "Pause" : "Play"}
+    <aside
+      style={{
+        width: 320,
+        padding: 16,
+        background: "linear-gradient(170deg, #0e1726 0%, #0b1220 100%)",
+        color: "#e6edf3",
+        border: "1px solid #1f2a3a",
+        borderRadius: 12,
+        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.22)"
+      }}
+    >
+      <div style={{ marginBottom: 14 }}>
+        <h3 style={{ margin: "0 0 6px 0", fontSize: 18 }}>Controls</h3>
+        <div style={{ fontSize: 12, opacity: 0.8 }}>
+          {template.chapter} / {template.label}
+        </div>
+      </div>
+
+      <button
+        onClick={onTogglePlay}
+        style={{
+          marginBottom: 14,
+          padding: "8px 12px",
+          borderRadius: 8,
+          border: "1px solid #2e4056",
+          color: "#e6edf3",
+          background: playing ? "#13315a" : "#174f3c",
+          fontWeight: 600,
+          cursor: "pointer"
+        }}
+      >
+        {playing ? "Pause Animation" : "Play Animation"}
       </button>
 
       {Object.entries(controls).map(([name, cfg]) => (
-        <div key={name} style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            {name}: {Number(params[name] ?? cfg.default).toFixed(2)}
+        <section
+          key={name}
+          style={{
+            marginBottom: 12,
+            padding: 10,
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)"
+          }}
+        >
+          <label style={{ display: "block", marginBottom: 6, fontSize: 13, textTransform: "capitalize" }}>
+            {name}: <strong>{Number(params[name] ?? cfg.default).toFixed(2)}</strong>
           </label>
           <input
             type="range"
@@ -22,10 +60,22 @@
             step={0.01}
             value={params[name] ?? cfg.default}
             onChange={(e) => onChange(name, Number(e.target.value))}
-            style={{ width: "100%" }}
+            style={{ width: "100%", accentColor: "#1da1f2" }}
           />
-        </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 11,
+              opacity: 0.72,
+              marginTop: 4
+            }}
+          >
+            <span>{cfg.min}</span>
+            <span>{cfg.max}</span>
+          </div>
+        </section>
       ))}
-    </div>
+    </aside>
   );
 }
