@@ -4,10 +4,74 @@
   "chapter": "oscillations",
   "scene": "particle_shm",
   "motion": "particle_shm",
+  "objective": "Understand 1D SHM of a particle between limits -A and +A about origin O.",
+  "keyLabels": [
+    {
+      "symbol": "x(t)",
+      "metric": "x",
+      "unit": "u",
+      "precision": 2,
+      "description": "Instantaneous displacement from origin O."
+    },
+    {
+      "symbol": "A",
+      "metric": "amplitude",
+      "unit": "u",
+      "precision": 2,
+      "description": "Maximum displacement from mean position."
+    },
+    {
+      "symbol": "\u03c9",
+      "metric": "omega",
+      "unit": "rad/s",
+      "precision": 2,
+      "description": "Angular frequency controlling oscillation rate."
+    },
+    {
+      "symbol": "x = 0",
+      "valueText": "at O",
+      "description": "Mean (equilibrium) position is the origin O."
+    }
+  ],
+  "explainTop": "The particle oscillates along the x-axis between -A and +A. Displacement is always measured from O (the mean position).",
+  "explainBottom": "x(t) gives instantaneous displacement, not total distance traveled over time.",
+  "checkpointQuestions": [
+    {
+      "prompt": "Can you identify an instant when the particle is near origin O (x close to 0)?",
+      "check": {
+        "metric": "x",
+        "target": 0,
+        "tolerance": 0.06,
+        "mode": "near"
+      },
+      "success": "Correct: when x ~ 0, the particle is at the mean position O.",
+      "hint": "Watch the moving particle and the x(t) badge until the value approaches 0."
+    }
+  ],
+  "takeaway": [
+    "Motion is bounded between fixed limits -A and +A.",
+    "x = 0 marks the mean position at origin O.",
+    "x(t) is displacement from O at each instant."
+  ],
+  "ui": {
+    "primaryControls": ["amplitude", "speed"]
+  },
   "controls": {
-    "amplitude": { "min": 0.3, "max": 1.4, "default": 1.0 },
-    "speed": { "min": 0.5, "max": 3.0, "default": 1.2 },
-    "phase": { "min": 0.0, "max": 6.28, "default": 0.0 }
+    "amplitude": {
+      "min": 0.3,
+      "max": 1.4,
+      "default": 1.0
+    },
+    "speed": {
+      "min": 0.5,
+      "max": 3.0,
+      "default": 1.2
+    },
+    "phase": {
+      "min": 0.0,
+      "max": 6.28,
+      "default": 0.0
+    }
   },
   "visual": {
     "overlayImage": false,

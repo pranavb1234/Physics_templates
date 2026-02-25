@@ -1,12 +1,65 @@
-﻿{
+{
   "id": "osc_pendulum_v1",
   "label": "pendulum",
   "chapter": "oscillations",
   "scene": "pendulum",
   "motion": "pendulum_shm",
+  "objective": "Understand angular displacement \u03b8 from the mean vertical line in an ideal simple pendulum.",
+  "keyLabels": [
+    {
+      "symbol": "\u03b8",
+      "metric": "theta",
+      "unit": "rad",
+      "precision": 2,
+      "description": "Instantaneous angular displacement from the dashed mean line."
+    },
+    {
+      "symbol": "\u03c9",
+      "metric": "omega",
+      "unit": "rad/s",
+      "precision": 2,
+      "description": "Instantaneous angular velocity of the bob."
+    },
+    {
+      "symbol": "\u03bc",
+      "valueText": "0",
+      "description": "Ideal case: friction is zero, so damping is ignored."
+    }
+  ],
+  "explainTop": "The dashed vertical line is equilibrium. At every instant, \u03b8 is the angle between this line and the current string direction.",
+  "explainBottom": "The bob oscillates about the mean line. \u03b8 is instantaneous displacement, not total angle swept over time.",
+  "checkpointQuestions": [
+    {
+      "prompt": "Can you catch the moment when the bob crosses the mean line (\u03b8 close to 0)?",
+      "check": {
+        "metric": "theta",
+        "target": 0,
+        "tolerance": 0.08,
+        "mode": "near"
+      },
+      "success": "Correct: crossing the dashed mean line corresponds to \u03b8 ~ 0.",
+      "hint": "Watch the bob as it crosses the dashed line and check the \u03b8 badge value."
+    }
+  ],
+  "takeaway": [
+    "\u03b8 is measured from equilibrium, not from an arbitrary axis.",
+    "Motion alternates between +\u03b8 and -\u03b8 about the mean line.",
+    "In this ideal model with \u03bc = 0, damping is not included."
+  ],
+  "ui": {
+    "primaryControls": ["amplitude", "speed"]
+  },
   "controls": {
-    "amplitude": { "min": 0.1, "max": 1.2, "default": 0.6 },
-    "speed": { "min": 0.5, "max": 3.0, "default": 1.0 }
+    "amplitude": {
+      "min": 0.1,
+      "max": 1.2,
+      "default": 0.6
+    },
+    "speed": {
+      "min": 0.5,
+      "max": 3.0,
+      "default": 1.0
+    }
   },
   "visual": {
     "overlayImage": true,

@@ -3,6 +3,153 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { SceneRegistry } from "../animations/registries/SceneRegistry";
 import { MotionRegistry } from "../animations/registries/MotionRegistry";
 
+const overlayRootStyle = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "none",
+  fontFamily: "ui-sans-serif, system-ui, sans-serif",
+  color: "#1f2937"
+};
+
+const chipStyle = {
+  padding: "4px 9px",
+  borderRadius: 999,
+  border: "1px solid #d0d7de",
+  background: "rgba(255,255,255,0.95)",
+  fontSize: 12,
+  fontWeight: 700,
+  whiteSpace: "nowrap"
+};
+
+const calloutStyle = {
+  position: "absolute",
+  fontSize: 12,
+  fontWeight: 600,
+  border: "1px solid #d0d7de",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.94)",
+  padding: "3px 8px",
+  whiteSpace: "nowrap"
+};
+
+function formatNumber(value, precision = 2) {
+  if (!Number.isFinite(Number(value))) return "--";
+  return Number(value).toFixed(precision);
+}
+
+function buildLiveBadges(keyLabels, metrics) {
+  if (!Array.isArray(keyLabels)) return [];
+
+  return keyLabels.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+
+    const symbol = item.symbol ?? item.metric ?? "label";
+
+    if (item.valueText !== undefined) {
+      return [
+        {
+          symbol,
+          value: String(item.valueText),
+          isStatic: true
+        }
+      ];
+    }
+
+    if (!item.metric) return [];
+
+    const metricValue = Number(metrics?.[item.metric]);
+    if (!Number.isFinite(metricValue)) return [];
+
+    const precision = typeof item.precision === "number" ? item.precision : 2;
+    const unit = item.unit ? ` ${item.unit}` : "";
+
+    return [
+      {
+        symbol,
+        value: `${formatNumber(metricValue, precision)}${unit}`,
+        isStatic: false
+      }
+    ];
+  });
+}
+
+function evaluateCheckpoint(question, metrics) {
+  if (!question?.check) {
+    return {
+      passed: false,
+      status: "pending",
+      message: "No checkpoint configured for this template.",
+      valueText: ""
+    };
+  }
+
+  const { metric, target = 0, tolerance = 0.05, mode = "near" } = question.check;
+  const value = Number(metrics?.[metric]);
+
+  if (!Number.isFinite(value)) {
+    return {
+      passed: false,
+      status: "pending",
+      message: question.hint ?? "Interact with the model to evaluate this checkpoint.",
+      valueText: ""
+    };
+  }
+
+  let passed = false;
+  if (mode === "positive") passed = value > 0;
+  else if (mode === "negative") passed = value < 0;
+  else passed = Math.abs(value - target) <= tolerance;
+
+  return {
+    passed,
+    status: passed ? "pass" : "pending",
+    message: passed
+      ? question.success ?? "Checkpoint passed."
+      : question.hint ?? "Keep adjusting controls and observing motion.",
+    valueText: `${metric} = ${formatNumber(value, 3)}`
+  };
+}
+
+function getSceneStateNote(scene, metrics) {
+  if (scene === "spring_mass") {
+    if (Math.abs(metrics.x ?? 0) < 0.01) return "Live state: x is near 0, so the block is close to equilibrium.";
+    return metrics.x > 0
+      ? "Live state: the block is right of equilibrium, spring is stretched, restoring force points left."
+      : "Live state: the block is left of equilibrium, spring is compressed, restoring force points right.";
+  }
+
+  if (scene === "pendulum") {
+    if (Math.abs(metrics.theta ?? 0) < 0.01) return "Live state: bob is crossing the mean vertical line (theta near 0).";
+    return metrics.theta > 0
+      ? "Live state: bob is on the +theta side of the mean line."
+      : "Live state: bob is on the -theta side of the mean line.";
+  }
+
+  if (scene === "particle_shm") {
+    if (Math.abs(metrics.velocity ?? 0) < 0.02) return "Live state: particle is near a turning point where velocity is small.";
+    return metrics.velocity > 0
+      ? "Live state: particle is moving toward +A."
+      : "Live state: particle is moving toward -A.";
+  }
+
+  if (scene === "double_spring_mass") {
+    if (Math.abs(metrics.x ?? 0) < 0.01) return "Live state: mass is near O, so net restoring force is near zero.";
+    return metrics.x > 0
+      ? "Live state: displaced right, both spring forces point left toward O."
+      : "Live state: displaced left, both spring forces point right toward O.";
+  }
+
+  return "Live state: observe motion and compare with the defined labels.";
+}
+
+function didUserInteract(template, params) {
+  return Object.entries(template?.controls ?? {}).some(([name, cfg]) => {
+    const current = Number(params?.[name] ?? cfg.default);
+    const baseline = Number(cfg.default);
+    return Math.abs(current - baseline) > 1e-4;
+  });
+}
+
 function RuntimeAnimator({
   template,
   params,
@@ -35,6 +182,7 @@ function RuntimeAnimator({
     particleMetrics: useRef({ x: 0, amplitude: 1, omega: 1, phase: 0, velocity: 0 }),
     doubleSpringMetrics: useRef({ x: 0, force: 0, k: 1, massX: 0, direction: "right" })
   };
+
   const lastMetricsUpdate = useRef(0);
 
   const SceneComponent = SceneRegistry[template.scene];
@@ -79,52 +227,25 @@ function RuntimeAnimator({
 }
 
 function SpringMassCanvasOverlay({ metrics }) {
-  const chipStyle = {
-    padding: "4px 8px",
-    borderRadius: 999,
-    border: "1px solid #d0d7de",
-    background: "rgba(255,255,255,0.93)",
-    fontSize: 13,
-    fontWeight: 600
-  };
-  const calloutStyle = {
-    position: "absolute",
-    fontSize: 12,
-    fontWeight: 600,
-    border: "1px solid #d0d7de",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.94)",
-    padding: "3px 8px",
-    whiteSpace: "nowrap"
-  };
-
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        color: "#1f2937"
-      }}
-    >
-      <div style={{ position: "absolute", top: 12, right: 12, display: "grid", gap: 6, justifyItems: "end" }}>
-        <div style={chipStyle}>x = {metrics.x.toFixed(2)}</div>
-        <div style={{ ...chipStyle, fontWeight: 700, color: "#be123c" }}>F = -kx = {metrics.force.toFixed(2)}</div>
+    <div style={overlayRootStyle}>
+      <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 8 }}>
+        <div style={chipStyle}>x = {formatNumber(metrics.x, 2)}</div>
+        <div style={{ ...chipStyle, color: "#be123c" }}>F = -kx = {formatNumber(metrics.force, 2)}</div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "15%", top: "32%" }}>fixed wall</div>
-      <div style={{ ...calloutStyle, left: "38%", top: "32%" }}>spring (k)</div>
-      <div style={{ ...calloutStyle, left: "56%", top: "45%" }}>block (mass m)</div>
-      <div style={{ ...calloutStyle, left: "50%", top: "32%", transform: "translateX(-50%)" }}>
+      <div style={{ ...calloutStyle, left: "5%", top: "20%" }}>fixed wall</div>
+      <div style={{ ...calloutStyle, left: "29%", top: "20%" }}>spring (k)</div>
+      <div style={{ ...calloutStyle, left: "66%", top: "20%" }}>block (mass m)</div>
+      <div style={{ ...calloutStyle, left: "53%", top: "35%", transform: "translateX(-50%)" }}>
         mean position (x = 0)
       </div>
-      <div style={{ ...calloutStyle, left: "50%", top: "58%", transform: "translateX(-50%)" }}>displacement x</div>
+      <div style={{ ...calloutStyle, left: "48%", top: "52%", transform: "translateX(-50%)" }}>displacement x</div>
       <div
         style={{
           ...calloutStyle,
-          left: "62%",
-          top: "68%",
+          right: "6%",
+          top: "66%",
           color: "#be123c",
           border: "1px solid #f0b7c3"
         }}
@@ -142,12 +263,13 @@ function PendulumCanvasOverlay({ metrics }) {
   const showArc = Math.abs(thetaClamped) > 0.025;
 
   const cx = 50;
-  const cy = 24;
-  const radius = 12;
+  const cy = 23;
+  const radius = 11;
 
   const arcPath = (() => {
-    const segments = 30;
+    const segments = 28;
     let d = "";
+
     for (let i = 0; i <= segments; i += 1) {
       const t = i / segments;
       const a = thetaClamped * t;
@@ -155,177 +277,31 @@ function PendulumCanvasOverlay({ metrics }) {
       const y = cy + radius * Math.cos(a);
       d += `${i === 0 ? "M" : " L"} ${x.toFixed(3)} ${y.toFixed(3)}`;
     }
+
     return d;
   })();
 
-  const labelAngle = thetaClamped * 0.5;
-  const labelX = cx + (radius + 5.2) * Math.sin(labelAngle);
-  const labelY = cy + (radius + 5.2) * Math.cos(labelAngle);
+  const labelAngle = thetaClamped * 0.55;
+  const labelX = cx + (radius + 5.5) * Math.sin(labelAngle);
+  const labelY = cy + (radius + 5.5) * Math.cos(labelAngle);
 
   const directionLabel =
-    Math.abs(omega) < 0.02
-      ? "Turning point"
-      : omega > 0
-        ? "Moving to +theta"
-        : "Moving to -theta";
+    Math.abs(omega) < 0.02 ? "Turning point" : omega > 0 ? "Moving to +theta" : "Moving to -theta";
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        color: "#1f2937"
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 12,
-          right: 12,
-          display: "grid",
-          gap: 6,
-          justifyItems: "end",
-          maxWidth: "46%"
-        }}
-      >
-        <div
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            background: "rgba(255,255,255,0.94)",
-            fontSize: 13,
-            fontWeight: 600
-          }}
-        >
-          {"\u03B8"} = {Math.abs(theta).toFixed(2)} rad ({Math.abs((theta * 180) / Math.PI).toFixed(1)} deg)
+    <div style={overlayRootStyle}>
+      <div style={{ position: "absolute", top: 10, right: 10, display: "grid", gap: 7, justifyItems: "end" }}>
+        <div style={chipStyle}>
+          {"\u03B8"} = {formatNumber(theta, 2)} rad
         </div>
-        <div
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            background: "rgba(255,255,255,0.94)",
-            fontSize: 13,
-            fontWeight: 600
-          }}
-        >
-          {directionLabel}
-        </div>
-        <div
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            background: "rgba(255,255,255,0.94)",
-            fontSize: 12,
-            fontWeight: 600
-          }}
-        >
-          dashed line = mean position
-        </div>
+        <div style={chipStyle}>{directionLabel}</div>
       </div>
 
-      <div
-        style={{
-          position: "absolute",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.94)",
-          padding: "3px 8px",
-          whiteSpace: "nowrap",
-          left: "50%",
-          top: "2%",
-          transform: "translateX(-50%)"
-        }}
-      >
-        support
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.94)",
-          padding: "3px 8px",
-          whiteSpace: "nowrap",
-          left: "50%",
-          top: "12%",
-          transform: "translateX(-50%)"
-        }}
-      >
-        pivot
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.94)",
-          padding: "3px 8px",
-          whiteSpace: "nowrap",
-          left: "50%",
-          top: "62%",
-          transform: "translateX(-50%)"
-        }}
-      >
+      <div style={{ ...calloutStyle, left: "50%", top: "3%", transform: "translateX(-50%)" }}>support</div>
+      <div style={{ ...calloutStyle, left: "15%", top: "46%" }}>string</div>
+      <div style={{ ...calloutStyle, left: "15%", top: "65%" }}>bob (mass m)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "67%", transform: "translateX(-50%)" }}>
         mean position (dashed)
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.94)",
-          padding: "3px 8px",
-          whiteSpace: "nowrap",
-          left: "18%",
-          top: "42%"
-        }}
-      >
-        string
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.94)",
-          padding: "3px 8px",
-          whiteSpace: "nowrap",
-          left: "18%",
-          top: "60%"
-        }}
-      >
-        bob (mass m)
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          fontSize: 12,
-          fontWeight: 600,
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.94)",
-          padding: "3px 8px",
-          whiteSpace: "nowrap",
-          left: "35%",
-          top: "68%"
-        }}
-      >
-        tangential direction
       </div>
 
       <svg
@@ -347,7 +323,7 @@ function PendulumCanvasOverlay({ metrics }) {
               d="M0.2,0.2 L1.9,1.1 L0.2,2.0"
               fill="none"
               stroke="#1f2937"
-              strokeWidth="0.22"
+              strokeWidth="0.2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -356,11 +332,11 @@ function PendulumCanvasOverlay({ metrics }) {
 
         {showArc && (
           <>
-            <path d={arcPath} stroke="rgba(255,255,255,0.75)" strokeWidth="0.92" fill="none" />
+            <path d={arcPath} stroke="rgba(255,255,255,0.78)" strokeWidth="0.95" fill="none" />
             <path
               d={arcPath}
               stroke="#1f2937"
-              strokeWidth="0.29"
+              strokeWidth="0.28"
               strokeLinecap="round"
               strokeLinejoin="round"
               fill="none"
@@ -371,16 +347,16 @@ function PendulumCanvasOverlay({ metrics }) {
 
         <g transform={`translate(${labelX}, ${labelY})`}>
           <rect
-            x="-3.4"
-            y="-2.2"
-            width="6.8"
-            height="4.4"
-            rx="1.2"
-            fill="rgba(255,255,255,0.92)"
+            x="-3"
+            y="-2"
+            width="6"
+            height="4"
+            rx="1"
+            fill="rgba(255,255,255,0.93)"
             stroke="#d0d7de"
-            strokeWidth="0.24"
+            strokeWidth="0.22"
           />
-          <text x="0" y="1.1" textAnchor="middle" fontSize="2.7" fill="#1f2937" fontWeight="700">
+          <text x="0" y="1" textAnchor="middle" fontSize="2.8" fill="#1f2937" fontWeight="700">
             {"\u03B8"}
           </text>
         </g>
@@ -390,19 +366,8 @@ function PendulumCanvasOverlay({ metrics }) {
 }
 
 function ParticleCanvasOverlay({ metrics }) {
-  const xText = metrics.x.toFixed(2);
-  const amplitudeText = metrics.amplitude.toFixed(2);
-
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        color: "#1f2937"
-      }}
-    >
+    <div style={overlayRootStyle}>
       <div
         style={{
           position: "absolute",
@@ -414,53 +379,25 @@ function ParticleCanvasOverlay({ metrics }) {
           maxWidth: "88%"
         }}
       >
-        <div
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            background: "rgba(255,255,255,0.94)",
-            fontSize: 13,
-            fontWeight: 700
-          }}
-        >
-          x(t) = A cos({"\u03C9"}t + {"\u03C6"})
-        </div>
-        <div
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            background: "rgba(255,255,255,0.94)",
-            fontSize: 13,
-            fontWeight: 600
-          }}
-        >
-          x(t) = {xText}
-        </div>
-        <div
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid #d0d7de",
-            background: "rgba(255,255,255,0.94)",
-            fontSize: 13,
-            fontWeight: 600
-          }}
-        >
-          A = {amplitudeText}
-        </div>
+        <div style={chipStyle}>x(t) = A cos({"\u03C9"}t + {"\u03C6"})</div>
+        <div style={chipStyle}>x(t) = {formatNumber(metrics.x, 2)}</div>
+        <div style={chipStyle}>A = {formatNumber(metrics.amplitude, 2)}</div>
+      </div>
+
+      <div style={{ ...calloutStyle, left: "50%", top: "7%", transform: "translateX(-50%)" }}>displacement x (from O)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "82%", transform: "translateX(-50%)" }}>
+        x = 0 at mean position (O)
       </div>
 
       <div
         style={{
           position: "absolute",
-          left: "9%",
-          top: "50%",
-          transform: "translateY(-50%)",
-          fontSize: 18,
+          left: "10%",
+          top: "59%",
+          transform: "translateX(-50%)",
+          fontSize: 28,
           fontWeight: 700,
-          color: "#1f2937"
+          color: "#344150"
         }}
       >
         -A
@@ -469,11 +406,11 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "50%",
-          transform: "translateX(-50%) translateY(-50%)",
-          fontSize: 18,
+          top: "59%",
+          transform: "translateX(-50%)",
+          fontSize: 34,
           fontWeight: 700,
-          color: "#1f2937"
+          color: "#344150"
         }}
       >
         O
@@ -481,216 +418,47 @@ function ParticleCanvasOverlay({ metrics }) {
       <div
         style={{
           position: "absolute",
-          right: "9%",
-          top: "50%",
-          transform: "translateY(-50%)",
-          fontSize: 18,
+          left: "90%",
+          top: "59%",
+          transform: "translateX(-50%)",
+          fontSize: 28,
           fontWeight: 700,
-          color: "#1f2937"
+          color: "#344150"
         }}
       >
         +A
-      </div>
-
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          bottom: "8%",
-          transform: "translateX(-50%)",
-          fontSize: 13,
-          fontWeight: 700,
-          background: "rgba(255,255,255,0.92)",
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          padding: "3px 9px"
-        }}
-      >
-        x = 0 at mean position (O)
-      </div>
-
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "8%",
-          transform: "translateX(-50%)",
-          fontSize: 13,
-          fontWeight: 600,
-          background: "rgba(255,255,255,0.9)",
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          padding: "3px 9px"
-        }}
-      >
-        displacement x (from O)
-      </div>
-
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          bottom: "2%",
-          transform: "translateX(-50%)",
-          fontSize: 13,
-          fontWeight: 600,
-          background: "rgba(255,255,255,0.9)",
-          border: "1px solid #d0d7de",
-          borderRadius: 999,
-          padding: "3px 9px"
-        }}
-      >
-        oscillation limits between -A and +A
       </div>
     </div>
   );
 }
 
 function DoubleSpringCanvasOverlay({ metrics }) {
-  const chipStyle = {
-    padding: "4px 8px",
-    borderRadius: 999,
-    border: "1px solid #d0d7de",
-    background: "rgba(255,255,255,0.94)",
-    fontSize: 13,
-    fontWeight: 600
-  };
-  const calloutStyle = {
-    position: "absolute",
-    fontSize: 12,
-    fontWeight: 600,
-    border: "1px solid #d0d7de",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.94)",
-    padding: "3px 8px",
-    whiteSpace: "nowrap"
-  };
-
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        color: "#1f2937"
-      }}
-    >
-      <div style={{ position: "absolute", top: 12, right: 12, display: "grid", gap: 6, justifyItems: "end" }}>
-        <div style={chipStyle}>x = {metrics.x.toFixed(2)}</div>
-        <div style={{ ...chipStyle, color: "#be123c", fontWeight: 700 }}>Fnet = -2kx = {metrics.force.toFixed(2)}</div>
+    <div style={overlayRootStyle}>
+      <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={chipStyle}>x = {formatNumber(metrics.x, 2)}</div>
+        <div style={{ ...chipStyle, color: "#be123c" }}>Fnet = -2kx = {formatNumber(metrics.force, 2)}</div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "17%", top: "23%" }}>left spring (k)</div>
-      <div style={{ ...calloutStyle, left: "72%", top: "23%", transform: "translateX(-50%)" }}>right spring (k)</div>
+      <div style={{ ...calloutStyle, left: "15%", top: "21%" }}>left spring (k)</div>
+      <div style={{ ...calloutStyle, right: "13%", top: "21%" }}>right spring (k)</div>
       <div style={{ ...calloutStyle, left: "50%", top: "18%", transform: "translateX(-50%)" }}>block (mass m)</div>
-      <div style={{ ...calloutStyle, left: "42%", top: "34%" }}>F1</div>
-      <div style={{ ...calloutStyle, left: "57%", top: "34%" }}>F2</div>
-      <div style={{ ...calloutStyle, left: "50%", top: "57%", transform: "translateX(-50%)" }}>
-        O (equilibrium)
-      </div>
-      <div style={{ ...calloutStyle, left: "50%", top: "86%", transform: "translateX(-50%)" }}>displacement x</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "60%", transform: "translateX(-50%)" }}>O (equilibrium)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "83%", transform: "translateX(-50%)" }}>displacement x</div>
     </div>
   );
 }
 
-function SpringMassInfo({ metrics }) {
-  const phaseText =
-    Math.abs(metrics.x) < 0.01
-      ? "At mean position, spring length is natural and net force is near zero."
-      : metrics.x > 0
-        ? "Block is right of mean: spring is stretched, so restoring force points left."
-        : "Block is left of mean: spring is compressed, so restoring force points right.";
+function LessonSteps({ currentStep }) {
+  const steps = ["Observe", "Interact", "Explain", "Check"];
 
   return (
-    <div
-      style={{
-        borderTop: "1px solid #d0d7de",
-        padding: "10px 12px",
-        background: "#ffffff",
-        color: "#1f2937",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        fontSize: 13,
-        lineHeight: 1.4
-      }}
-    >
-      The blue block marks the equilibrium position. Displacement x is measured from this mean position, and restoring force is F = -kx. This is the ideal case with friction coefficient mu = 0, so damping is not present. {phaseText}
-    </div>
-  );
-}
-
-function PendulumInfo({ metrics }) {
-  const sideText =
-    Math.abs(metrics.theta) < 0.01
-      ? "The bob is at mean position."
-      : metrics.theta > 0
-        ? "The bob is on the +theta side of the mean line."
-        : "The bob is on the -theta side of the mean line.";
-
-  return (
-    <div
-      style={{
-        borderTop: "1px solid #d0d7de",
-        padding: "10px 12px",
-        background: "#ffffff",
-        color: "#1f2937",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        fontSize: 13,
-        lineHeight: 1.4
-      }}
-    >
-      The dashed vertical line is the mean (equilibrium) position. Angular displacement theta is measured between this line and the string at each instant. The tangential arrow near the bob updates with direction of motion. This is an ideal pendulum with mu = 0, so damping is not happening. {sideText}
-    </div>
-  );
-}
-
-function ParticleInfo({ metrics }) {
-  const velocityText =
-    Math.abs(metrics.velocity) < 0.01
-      ? "At a turning point, velocity is nearly zero."
-      : metrics.velocity > 0
-        ? "Particle is moving toward +A."
-        : "Particle is moving toward -A.";
-
-  return (
-    <div
-      style={{
-        borderTop: "1px solid #d0d7de",
-        padding: "10px 12px",
-        background: "#ffffff",
-        color: "#1f2937",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        fontSize: 13,
-        lineHeight: 1.4
-      }}
-    >
-      The particle oscillates along the x-axis between -A and +A about the origin O. This is ideal SHM represented by x(t) = A cos({"\u03C9"}t + {"\u03C6"}). At the mean position O, x = 0. The value x(t) is the instantaneous displacement from O, not total distance traveled. The lower double-headed arrow is fixed and marks the full oscillation range. {velocityText}
-    </div>
-  );
-}
-
-function DoubleSpringInfo({ metrics }) {
-  const directionText =
-    Math.abs(metrics.x) < 0.01
-      ? "At equilibrium, both springs are equally stretched/compressed and net restoring force is near zero."
-      : metrics.x > 0
-        ? "Mass is displaced right: both F1 and F2 act left toward O."
-        : "Mass is displaced left: both F1 and F2 act right toward O.";
-
-  return (
-    <div
-      style={{
-        borderTop: "1px solid #d0d7de",
-        padding: "10px 12px",
-        background: "#ffffff",
-        color: "#1f2937",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        fontSize: 13,
-        lineHeight: 1.4
-      }}
-    >
-      The mass is connected between two identical springs of constant k. If displaced by x from equilibrium O, both
-      springs produce restoring forces toward O. So the net restoring force is Fnet = -(k + k)x = -2kx. {directionText}
+    <div className="lesson-steps">
+      {steps.map((step, index) => (
+        <div key={step} className={`lesson-step ${index <= currentStep ? "is-active" : ""}`}>
+          {step}
+        </div>
+      ))}
     </div>
   );
 }
@@ -700,6 +468,7 @@ export default function AnimationEngine({ template, params, playing }) {
     () => template?.visual?.backgroundOpacity ?? 0.2,
     [template]
   );
+
   const isSpringMass = template?.scene === "spring_mass";
   const isPendulum = template?.scene === "pendulum";
   const isParticle = template?.scene === "particle_shm";
@@ -723,21 +492,49 @@ export default function AnimationEngine({ template, params, playing }) {
     direction: "right"
   });
 
-  if (!template) return <div>No template loaded.</div>;
+  if (!template) return <div className="lesson-shell">No template loaded.</div>;
+
+  const sceneMetrics = isSpringMass
+    ? springMetrics
+    : isPendulum
+      ? pendulumMetrics
+      : isParticle
+        ? particleMetrics
+        : isDoubleSpring
+          ? doubleSpringMetrics
+          : {};
+
+  const liveBadges = buildLiveBadges(template.keyLabels, sceneMetrics);
+  const checkpoint = Array.isArray(template.checkpointQuestions) ? template.checkpointQuestions[0] : null;
+  const checkpointResult = evaluateCheckpoint(checkpoint, sceneMetrics);
+  const interactionHappened = didUserInteract(template, params);
+
+  let currentStep = 0;
+  if (interactionHappened) currentStep = 1;
+  if (interactionHappened && template.explainBottom) currentStep = 2;
+  if (checkpoint && checkpointResult.passed) currentStep = 3;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minHeight: 420,
-        background: isDiagram2D ? "#eef2f6" : `rgba(11, 18, 28, ${backgroundOpacity})`
-      }}
-    >
-      <div style={{ position: "relative", minHeight: 420, height: 460 }}>
+    <div className="lesson-shell">
+      <div className="lesson-head">
+        <div className="lesson-kicker">What this teaches</div>
+        <div className="lesson-objective">
+          {template.objective ?? `Understand the ${template.label} template through motion and labels.`}
+        </div>
+        <LessonSteps currentStep={currentStep} />
+      </div>
+
+      {template.explainTop && <div className="lesson-note">{template.explainTop}</div>}
+
+      <div
+        className="lesson-canvas-wrap"
+        style={{
+          background: isDiagram2D ? "#eef2f6" : `rgba(11, 18, 28, ${backgroundOpacity})`
+        }}
+      >
         <Canvas
           orthographic={isDiagram2D}
+          dpr={[1, 2]}
           camera={
             isSpringMass
               ? { position: [0, -0.22, 10], zoom: 126 }
@@ -747,7 +544,7 @@ export default function AnimationEngine({ template, params, playing }) {
                   ? { position: [0, 0, 10], zoom: 155 }
                   : isDoubleSpring
                     ? { position: [0, -0.05, 10], zoom: 150 }
-                  : { position: [0, 0.7, 4], fov: 50 }
+                    : { position: [0, 0.7, 4], fov: 50 }
           }
         >
           <RuntimeAnimator
@@ -767,10 +564,64 @@ export default function AnimationEngine({ template, params, playing }) {
         {isDoubleSpring && <DoubleSpringCanvasOverlay metrics={doubleSpringMetrics} />}
       </div>
 
-      {isSpringMass && <SpringMassInfo metrics={springMetrics} />}
-      {isPendulum && <PendulumInfo metrics={pendulumMetrics} />}
-      {isParticle && <ParticleInfo metrics={particleMetrics} />}
-      {isDoubleSpring && <DoubleSpringInfo metrics={doubleSpringMetrics} />}
+      <div className="lesson-panels">
+        <section className="lesson-card">
+          <h3>Live concept values</h3>
+
+          {liveBadges.length > 0 ? (
+            <div className="lesson-badges">
+              {liveBadges.map((badge) => (
+                <div
+                  key={`${badge.symbol}-${badge.value}`}
+                  className={`lesson-badge ${badge.isStatic ? "is-static" : ""}`}
+                >
+                  <span className="lesson-badge-symbol">{badge.symbol}</span>
+                  <span className="lesson-badge-value">{badge.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="lesson-muted">No live badges configured.</div>
+          )}
+
+          {Array.isArray(template.keyLabels) && template.keyLabels.length > 0 && (
+            <div className="lesson-legend">
+              {template.keyLabels.map((item) => (
+                <div className="lesson-legend-item" key={`${item.symbol}-${item.description}`}>
+                  <strong>{item.symbol}</strong>
+                  <span>{item.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="lesson-card">
+          <h3>Guided check</h3>
+          <p>{checkpoint?.prompt ?? "Checkpoint not configured in this template."}</p>
+
+          <div className={`lesson-check-status ${checkpointResult.status === "pass" ? "pass" : "pending"}`}>
+            {checkpointResult.message}
+          </div>
+
+          {checkpointResult.valueText && <div className="lesson-check-metric">{checkpointResult.valueText}</div>}
+
+          <div className="lesson-live-note">{getSceneStateNote(template.scene, sceneMetrics)}</div>
+        </section>
+      </div>
+
+      {template.explainBottom && <div className="lesson-note secondary">{template.explainBottom}</div>}
+
+      {Array.isArray(template.takeaway) && template.takeaway.length > 0 && (
+        <section className="lesson-takeaway">
+          <h3>Takeaway</h3>
+          <ul>
+            {template.takeaway.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

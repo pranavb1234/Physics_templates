@@ -8,12 +8,19 @@ function buildInitialParams(template) {
   return Object.fromEntries(entries);
 }
 
+function getFirstLabel(templates, chapter) {
+  const labels = Object.keys(templates?.[chapter] ?? {});
+  return labels[0] ?? "";
+}
+
 export default function App() {
   const templates = useMemo(() => getAllTemplates(), []);
   const chapters = useMemo(() => Object.keys(templates), [templates]);
 
-  const [selectedChapter, setSelectedChapter] = useState("oscillations");
-  const [selectedLabel, setSelectedLabel] = useState("pendulum");
+  const initialChapter = chapters[0] ?? "";
+  const [selectedChapter, setSelectedChapter] = useState(initialChapter);
+  const [selectedLabel, setSelectedLabel] = useState(() => getFirstLabel(templates, initialChapter));
+
   const template = useMemo(
     () => loadTemplate(selectedChapter, selectedLabel),
     [selectedChapter, selectedLabel]
@@ -23,6 +30,7 @@ export default function App() {
     () => Object.keys(templates?.[selectedChapter] ?? {}),
     [templates, selectedChapter]
   );
+
   const [params, setParams] = useState(() => buildInitialParams(template));
   const [playing, setPlaying] = useState(true);
 
@@ -34,88 +42,68 @@ export default function App() {
 
   useEffect(() => {
     setParams(buildInitialParams(template));
+    setPlaying(true);
   }, [template]);
 
   const handleControlChange = (name, value) => {
     setParams((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleReset = () => {
+    setParams(buildInitialParams(template));
+    setPlaying(true);
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "radial-gradient(circle at 20% 0%, #142b47 0%, #0b1220 55%)",
-        color: "#f8f9fa"
-      }}
-    >
-      <header
-        style={{
-          padding: "14px 18px",
-          borderBottom: "1px solid #1f2a3a",
-          fontFamily: "ui-sans-serif, system-ui, sans-serif",
-          background: "rgba(8, 14, 26, 0.88)",
-          backdropFilter: "blur(4px)",
-          position: "sticky",
-          top: 0,
-          zIndex: 2
-        }}
-      >
-        <strong style={{ fontSize: 18 }}>Physics Template Animation System</strong>
-        <div style={{ opacity: 0.8, marginTop: 4, fontSize: 14 }}>
-          Chapter: {template?.chapter} | Label: {template?.label}
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="header-top">
+          <div>
+            <div className="app-title">Physics Learning Templates</div>
+            <div className="app-subtitle">
+              Tap a concept, interact with controls, and verify understanding with a guided checkpoint.
+            </div>
+          </div>
+
+          <div className="selector-row">
+            <select value={selectedChapter} onChange={(e) => setSelectedChapter(e.target.value)}>
+              {chapters.map((chapter) => (
+                <option key={chapter} value={chapter}>
+                  {chapter}
+                </option>
+              ))}
+            </select>
+
+            <select value={selectedLabel} onChange={(e) => setSelectedLabel(e.target.value)}>
+              {labelsForChapter.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          <select
-            value={selectedChapter}
-            onChange={(e) => setSelectedChapter(e.target.value)}
-            style={{
-              padding: "7px 10px",
-              borderRadius: 8,
-              border: "1px solid #2f4159",
-              background: "#0f1b2e",
-              color: "#e6edf3"
-            }}
-          >
-            {chapters.map((chapter) => (
-              <option key={chapter} value={chapter}>
-                {chapter}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedLabel}
-            onChange={(e) => setSelectedLabel(e.target.value)}
-            style={{
-              padding: "7px 10px",
-              borderRadius: 8,
-              border: "1px solid #2f4159",
-              background: "#0f1b2e",
-              color: "#e6edf3"
-            }}
-          >
-            {labelsForChapter.map((label) => (
-              <option key={label} value={label}>
-                {label}
-              </option>
-            ))}
-          </select>
+
+        <div className="selection-meta">
+          {template ? `${template.chapter} / ${template.label}` : "No template selected"}
         </div>
       </header>
 
-      <main style={{ display: "flex", gap: 14, padding: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 700px", minWidth: 0 }}>
+      <main className="app-main">
+        <section className="lesson-area">
           <AnimationEngine template={template} params={params} playing={playing} />
-        </div>
+        </section>
 
-        <div style={{ flex: "0 0 auto" }}>
+        <aside className="controls-wrap">
           <ControlPanel
             template={template}
             params={params}
             onChange={handleControlChange}
             playing={playing}
-            onTogglePlay={() => setPlaying((p) => !p)}
+            onTogglePlay={() => setPlaying((prev) => !prev)}
+            onReset={handleReset}
           />
-        </div>
+        </aside>
       </main>
     </div>
   );

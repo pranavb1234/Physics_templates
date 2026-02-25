@@ -1,12 +1,70 @@
-﻿{
+{
   "id": "osc_spring_mass_v1",
   "label": "spring_mass",
   "chapter": "oscillations",
   "scene": "spring_mass",
   "motion": "spring_shm",
+  "objective": "Understand equilibrium, displacement x, and restoring force F = -kx for a horizontal spring-mass system.",
+  "keyLabels": [
+    {
+      "symbol": "x",
+      "metric": "x",
+      "unit": "u",
+      "precision": 2,
+      "description": "Displacement measured from the mean position (x = 0)."
+    },
+    {
+      "symbol": "F = -kx",
+      "metric": "force",
+      "unit": "u",
+      "precision": 2,
+      "description": "Restoring force always points toward equilibrium."
+    },
+    {
+      "symbol": "k",
+      "valueText": "constant",
+      "description": "Spring constant determines restoring-force strength."
+    },
+    {
+      "symbol": "\u03bc",
+      "valueText": "0",
+      "description": "Ideal case: friction coefficient is zero, so no damping."
+    }
+  ],
+  "explainTop": "Observe the dashed mean-position line through the blue reference block. The moving gray block oscillates on both sides, so the spring alternately stretches and compresses.",
+  "explainBottom": "This diagram is ideal SHM on a horizontal plane. Displacement x is from equilibrium only, not total path length.",
+  "checkpointQuestions": [
+    {
+      "prompt": "Can you identify the instant when the block is at equilibrium (x close to 0)?",
+      "check": {
+        "metric": "x",
+        "target": 0,
+        "tolerance": 0.05,
+        "mode": "near"
+      },
+      "success": "Correct: at x ~ 0, restoring force magnitude is minimal and the block crosses mean position.",
+      "hint": "Watch for the block crossing the dashed mean line and the x badge approaching 0."
+    }
+  ],
+  "takeaway": [
+    "x is measured from equilibrium (mean position).",
+    "Restoring force follows F = -kx and points opposite displacement.",
+    "With \u03bc = 0, no damping is present in this ideal model."
+  ],
+  "ui": {
+    "primaryControls": ["amplitude", "speed"]
+  },
   "controls": {
-    "amplitude": { "min": 0.1, "max": 0.8, "default": 0.35 },
-    "speed": { "min": 0.5, "max": 3.0, "default": 1.2 }
+    "amplitude": {
+      "min": 0.1,
+      "max": 0.8,
+      "default": 0.35
+    },
+    "speed": {
+      "min": 0.5,
+      "max": 3.0,
+      "default": 1.2
+    }
   },
   "visual": {
     "overlayImage": false,

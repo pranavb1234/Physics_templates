@@ -4,11 +4,78 @@
   "chapter": "oscillations",
   "scene": "double_spring_mass",
   "motion": "double_spring_shm",
+  "objective": "Understand how two identical springs create net restoring force Fnet = -2kx around equilibrium O.",
+  "keyLabels": [
+    {
+      "symbol": "x",
+      "metric": "x",
+      "unit": "u",
+      "precision": 2,
+      "description": "Displacement of mass from equilibrium O."
+    },
+    {
+      "symbol": "Fnet = -2kx",
+      "metric": "force",
+      "unit": "u",
+      "precision": 2,
+      "description": "Combined restoring force from both springs."
+    },
+    {
+      "symbol": "k",
+      "metric": "k",
+      "precision": 2,
+      "description": "Spring constant of each identical spring."
+    },
+    {
+      "symbol": "\u03bc",
+      "valueText": "0",
+      "description": "Ideal case: damping due to friction is ignored."
+    }
+  ],
+  "explainTop": "At equilibrium O, left and right spring effects balance. When displaced by x, both springs exert restoring force toward O.",
+  "explainBottom": "Because both springs are identical, restoring effects add to give Fnet = -(k + k)x = -2kx.",
+  "checkpointQuestions": [
+    {
+      "prompt": "Can you identify the instant when the mass is back near equilibrium O (x close to 0)?",
+      "check": {
+        "metric": "x",
+        "target": 0,
+        "tolerance": 0.05,
+        "mode": "near"
+      },
+      "success": "Correct: near O, displacement and net restoring force magnitude are near zero.",
+      "hint": "Track the x badge and watch for the mass crossing the center guide."
+    }
+  ],
+  "takeaway": [
+    "Both spring forces are restoring and point toward O.",
+    "Net restoring force is proportional to displacement: Fnet = -2kx.",
+    "The system oscillates about equilibrium under ideal undamped assumptions."
+  ],
+  "ui": {
+    "primaryControls": ["amplitude", "speed", "k"]
+  },
   "controls": {
-    "amplitude": { "min": 0.1, "max": 0.9, "default": 0.35 },
-    "speed": { "min": 0.5, "max": 3.0, "default": 1.2 },
-    "k": { "min": 0.5, "max": 3.0, "default": 1.0 },
-    "phase": { "min": 0.0, "max": 6.28, "default": 0.0 }
+    "amplitude": {
+      "min": 0.1,
+      "max": 0.9,
+      "default": 0.35
+    },
+    "speed": {
+      "min": 0.5,
+      "max": 3.0,
+      "default": 1.2
+    },
+    "k": {
+      "min": 0.5,
+      "max": 3.0,
+      "default": 1.0
+    },
+    "phase": {
+      "min": 0.0,
+      "max": 6.28,
+      "default": 0.0
+    }
   },
   "visual": {
     "overlayImage": false,
