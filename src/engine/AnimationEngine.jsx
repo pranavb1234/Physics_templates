@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { SceneRegistry } from "../animations/registries/SceneRegistry";
 import { MotionRegistry } from "../animations/registries/MotionRegistry";
@@ -12,23 +12,23 @@ const overlayRootStyle = {
 };
 
 const chipStyle = {
-  padding: "4px 9px",
+  padding: "var(--overlay-chip-pad-y, 4px) var(--overlay-chip-pad-x, 9px)",
   borderRadius: 999,
   border: "1px solid #d0d7de",
   background: "rgba(255,255,255,0.95)",
-  fontSize: 12,
+  fontSize: "var(--overlay-chip-size, 12px)",
   fontWeight: 700,
   whiteSpace: "nowrap"
 };
 
 const calloutStyle = {
   position: "absolute",
-  fontSize: 12,
+  fontSize: "var(--overlay-callout-size, 12px)",
   fontWeight: 600,
   border: "1px solid #d0d7de",
   borderRadius: 999,
   background: "rgba(255,255,255,0.94)",
-  padding: "3px 8px",
+  padding: "var(--overlay-callout-pad-y, 3px) var(--overlay-callout-pad-x, 8px)",
   whiteSpace: "nowrap"
 };
 
@@ -150,6 +150,29 @@ function didUserInteract(template, params) {
   });
 }
 
+function useCompactLandscape() {
+  const [compactLandscape, setCompactLandscape] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(orientation: landscape) and (max-height: 620px) and (max-width: 1060px)");
+    const sync = () => setCompactLandscape(mediaQuery.matches);
+
+    sync();
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", sync);
+      return () => mediaQuery.removeEventListener("change", sync);
+    }
+
+    mediaQuery.addListener(sync);
+    return () => mediaQuery.removeListener(sync);
+  }, []);
+
+  return compactLandscape;
+}
+
 function RuntimeAnimator({
   template,
   params,
@@ -228,7 +251,7 @@ function RuntimeAnimator({
 
 function SpringMassCanvasOverlay({ metrics }) {
   return (
-    <div style={overlayRootStyle}>
+    <div className="canvas-overlay" style={overlayRootStyle}>
       <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 8 }}>
         <div style={chipStyle}>x = {formatNumber(metrics.x, 2)}</div>
         <div style={{ ...chipStyle, color: "#be123c" }}>F = -kx = {formatNumber(metrics.force, 2)}</div>
@@ -289,7 +312,7 @@ function PendulumCanvasOverlay({ metrics }) {
     Math.abs(omega) < 0.02 ? "Turning point" : omega > 0 ? "Moving to +theta" : "Moving to -theta";
 
   return (
-    <div style={overlayRootStyle}>
+    <div className="canvas-overlay" style={overlayRootStyle}>
       <div style={{ position: "absolute", top: 10, right: 10, display: "grid", gap: 7, justifyItems: "end" }}>
         <div style={chipStyle}>
           {"\u03B8"} = {formatNumber(theta, 2)} rad
@@ -367,7 +390,7 @@ function PendulumCanvasOverlay({ metrics }) {
 
 function ParticleCanvasOverlay({ metrics }) {
   return (
-    <div style={overlayRootStyle}>
+    <div className="canvas-overlay" style={overlayRootStyle}>
       <div
         style={{
           position: "absolute",
@@ -395,7 +418,7 @@ function ParticleCanvasOverlay({ metrics }) {
           left: "10%",
           top: "59%",
           transform: "translateX(-50%)",
-          fontSize: 28,
+          fontSize: "var(--overlay-limit-size, 28px)",
           fontWeight: 700,
           color: "#344150"
         }}
@@ -408,7 +431,7 @@ function ParticleCanvasOverlay({ metrics }) {
           left: "50%",
           top: "59%",
           transform: "translateX(-50%)",
-          fontSize: 34,
+          fontSize: "var(--overlay-origin-size, 34px)",
           fontWeight: 700,
           color: "#344150"
         }}
@@ -421,7 +444,7 @@ function ParticleCanvasOverlay({ metrics }) {
           left: "90%",
           top: "59%",
           transform: "translateX(-50%)",
-          fontSize: 28,
+          fontSize: "var(--overlay-limit-size, 28px)",
           fontWeight: 700,
           color: "#344150"
         }}
@@ -434,7 +457,7 @@ function ParticleCanvasOverlay({ metrics }) {
 
 function DoubleSpringCanvasOverlay({ metrics }) {
   return (
-    <div style={overlayRootStyle}>
+    <div className="canvas-overlay" style={overlayRootStyle}>
       <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <div style={chipStyle}>x = {formatNumber(metrics.x, 2)}</div>
         <div style={{ ...chipStyle, color: "#be123c" }}>Fnet = -2kx = {formatNumber(metrics.force, 2)}</div>
@@ -474,6 +497,7 @@ export default function AnimationEngine({ template, params, playing }) {
   const isParticle = template?.scene === "particle_shm";
   const isDoubleSpring = template?.scene === "double_spring_mass";
   const isDiagram2D = isSpringMass || isPendulum || isParticle || isDoubleSpring;
+  const compactLandscape = useCompactLandscape();
 
   const [springMetrics, setSpringMetrics] = useState({ x: 0, force: 0, k: 0, meanX: 0, massX: 0 });
   const [pendulumMetrics, setPendulumMetrics] = useState({ theta: 0, omega: 0 });
@@ -491,6 +515,11 @@ export default function AnimationEngine({ template, params, playing }) {
     massX: 0,
     direction: "right"
   });
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  useEffect(() => {
+    setDetailsOpen(!compactLandscape);
+  }, [template?.id, compactLandscape]);
 
   if (!template) return <div className="lesson-shell">No template loaded.</div>;
 
@@ -508,6 +537,7 @@ export default function AnimationEngine({ template, params, playing }) {
   const checkpoint = Array.isArray(template.checkpointQuestions) ? template.checkpointQuestions[0] : null;
   const checkpointResult = evaluateCheckpoint(checkpoint, sceneMetrics);
   const interactionHappened = didUserInteract(template, params);
+  const showDetails = !compactLandscape || detailsOpen;
 
   let currentStep = 0;
   if (interactionHappened) currentStep = 1;
@@ -515,7 +545,7 @@ export default function AnimationEngine({ template, params, playing }) {
   if (checkpoint && checkpointResult.passed) currentStep = 3;
 
   return (
-    <div className="lesson-shell">
+    <div className={`lesson-shell${compactLandscape ? " is-compact-landscape" : ""}`}>
       <div className="lesson-head">
         <div className="lesson-kicker">What this teaches</div>
         <div className="lesson-objective">
@@ -524,7 +554,19 @@ export default function AnimationEngine({ template, params, playing }) {
         <LessonSteps currentStep={currentStep} />
       </div>
 
-      {template.explainTop && <div className="lesson-note">{template.explainTop}</div>}
+      {compactLandscape && (
+        <div className="lesson-mobile-toggle-wrap">
+          <button
+            type="button"
+            className="lesson-mobile-toggle"
+            onClick={() => setDetailsOpen((prev) => !prev)}
+          >
+            {detailsOpen ? "Hide lesson notes" : "Show lesson notes"}
+          </button>
+        </div>
+      )}
+
+      {showDetails && template.explainTop && <div className="lesson-note">{template.explainTop}</div>}
 
       <div
         className="lesson-canvas-wrap"
@@ -534,16 +576,16 @@ export default function AnimationEngine({ template, params, playing }) {
       >
         <Canvas
           orthographic={isDiagram2D}
-          dpr={[1, 2]}
+          dpr={compactLandscape ? [1, 1.4] : [1, 2]}
           camera={
             isSpringMass
-              ? { position: [0, -0.22, 10], zoom: 126 }
+              ? { position: [0, -0.22, 10], zoom: compactLandscape ? 116 : 126 }
               : isPendulum
-                ? { position: [0, 0, 10], zoom: 148 }
+                ? { position: [0, 0, 10], zoom: compactLandscape ? 136 : 148 }
                 : isParticle
-                  ? { position: [0, 0, 10], zoom: 155 }
+                  ? { position: [0, 0, 10], zoom: compactLandscape ? 142 : 155 }
                   : isDoubleSpring
-                    ? { position: [0, -0.05, 10], zoom: 150 }
+                    ? { position: [0, -0.05, 10], zoom: compactLandscape ? 138 : 150 }
                     : { position: [0, 0.7, 4], fov: 50 }
           }
         >
@@ -564,63 +606,67 @@ export default function AnimationEngine({ template, params, playing }) {
         {isDoubleSpring && <DoubleSpringCanvasOverlay metrics={doubleSpringMetrics} />}
       </div>
 
-      <div className="lesson-panels">
-        <section className="lesson-card">
-          <h3>Live concept values</h3>
+      {showDetails && (
+        <>
+          <div className="lesson-panels">
+            <section className="lesson-card">
+              <h3>Live concept values</h3>
 
-          {liveBadges.length > 0 ? (
-            <div className="lesson-badges">
-              {liveBadges.map((badge) => (
-                <div
-                  key={`${badge.symbol}-${badge.value}`}
-                  className={`lesson-badge ${badge.isStatic ? "is-static" : ""}`}
-                >
-                  <span className="lesson-badge-symbol">{badge.symbol}</span>
-                  <span className="lesson-badge-value">{badge.value}</span>
+              {liveBadges.length > 0 ? (
+                <div className="lesson-badges">
+                  {liveBadges.map((badge) => (
+                    <div
+                      key={`${badge.symbol}-${badge.value}`}
+                      className={`lesson-badge ${badge.isStatic ? "is-static" : ""}`}
+                    >
+                      <span className="lesson-badge-symbol">{badge.symbol}</span>
+                      <span className="lesson-badge-value">{badge.value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="lesson-muted">No live badges configured.</div>
-          )}
+              ) : (
+                <div className="lesson-muted">No live badges configured.</div>
+              )}
 
-          {Array.isArray(template.keyLabels) && template.keyLabels.length > 0 && (
-            <div className="lesson-legend">
-              {template.keyLabels.map((item) => (
-                <div className="lesson-legend-item" key={`${item.symbol}-${item.description}`}>
-                  <strong>{item.symbol}</strong>
-                  <span>{item.description}</span>
+              {Array.isArray(template.keyLabels) && template.keyLabels.length > 0 && (
+                <div className="lesson-legend">
+                  {template.keyLabels.map((item) => (
+                    <div className="lesson-legend-item" key={`${item.symbol}-${item.description}`}>
+                      <strong>{item.symbol}</strong>
+                      <span>{item.description}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+              )}
+            </section>
 
-        <section className="lesson-card">
-          <h3>Guided check</h3>
-          <p>{checkpoint?.prompt ?? "Checkpoint not configured in this template."}</p>
+            <section className="lesson-card">
+              <h3>Guided check</h3>
+              <p>{checkpoint?.prompt ?? "Checkpoint not configured in this template."}</p>
 
-          <div className={`lesson-check-status ${checkpointResult.status === "pass" ? "pass" : "pending"}`}>
-            {checkpointResult.message}
+              <div className={`lesson-check-status ${checkpointResult.status === "pass" ? "pass" : "pending"}`}>
+                {checkpointResult.message}
+              </div>
+
+              {checkpointResult.valueText && <div className="lesson-check-metric">{checkpointResult.valueText}</div>}
+
+              <div className="lesson-live-note">{getSceneStateNote(template.scene, sceneMetrics)}</div>
+            </section>
           </div>
 
-          {checkpointResult.valueText && <div className="lesson-check-metric">{checkpointResult.valueText}</div>}
+          {template.explainBottom && <div className="lesson-note secondary">{template.explainBottom}</div>}
 
-          <div className="lesson-live-note">{getSceneStateNote(template.scene, sceneMetrics)}</div>
-        </section>
-      </div>
-
-      {template.explainBottom && <div className="lesson-note secondary">{template.explainBottom}</div>}
-
-      {Array.isArray(template.takeaway) && template.takeaway.length > 0 && (
-        <section className="lesson-takeaway">
-          <h3>Takeaway</h3>
-          <ul>
-            {template.takeaway.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
+          {Array.isArray(template.takeaway) && template.takeaway.length > 0 && (
+            <section className="lesson-takeaway">
+              <h3>Takeaway</h3>
+              <ul>
+                {template.takeaway.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       )}
     </div>
   );
