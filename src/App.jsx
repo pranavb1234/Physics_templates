@@ -33,6 +33,8 @@ export default function App() {
 
   const [params, setParams] = useState(() => buildInitialParams(template));
   const [playing, setPlaying] = useState(true);
+  const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!labelsForChapter.includes(selectedLabel)) {
@@ -45,6 +47,29 @@ export default function App() {
     setPlaying(true);
   }, [template]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(orientation: landscape) and (max-width: 1060px) and (max-height: 620px)");
+    const sync = () => setIsLandscapeMobile(mediaQuery.matches);
+
+    sync();
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", sync);
+      return () => mediaQuery.removeEventListener("change", sync);
+    }
+
+    mediaQuery.addListener(sync);
+    return () => mediaQuery.removeListener(sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isLandscapeMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [isLandscapeMobile]);
+
   const handleControlChange = (name, value) => {
     setParams((prev) => ({ ...prev, [name]: value }));
   };
@@ -54,56 +79,142 @@ export default function App() {
     setPlaying(true);
   };
 
+  const handleChapterChange = (chapter) => {
+    setSelectedChapter(chapter);
+  };
+
+  const handleLabelChange = (label) => {
+    setSelectedLabel(label);
+    if (isLandscapeMobile) {
+      setMobileMenuOpen(false);
+    }
+  };
+
+  const controlsPanel = (
+    <ControlPanel
+      template={template}
+      params={params}
+      onChange={handleControlChange}
+      playing={playing}
+      onTogglePlay={() => setPlaying((prev) => !prev)}
+      onReset={handleReset}
+    />
+  );
+
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="header-top">
-          <div>
-            <div className="app-title">Physics Learning Templates</div>
-            <div className="app-subtitle">
-              Tap a concept, interact with controls, and verify understanding with a guided checkpoint.
+    <div className={`app-shell${isLandscapeMobile ? " is-immersive" : ""}`}>
+      {!isLandscapeMobile && (
+        <header className="app-header">
+          <div className="header-top">
+            <div>
+              <div className="app-title">Physics Learning Templates</div>
+              <div className="app-subtitle">
+                Tap a concept, interact with controls, and verify understanding with a guided checkpoint.
+              </div>
+            </div>
+
+            <div className="selector-row">
+              <select value={selectedChapter} onChange={(e) => handleChapterChange(e.target.value)}>
+                {chapters.map((chapter) => (
+                  <option key={chapter} value={chapter}>
+                    {chapter}
+                  </option>
+                ))}
+              </select>
+
+              <select value={selectedLabel} onChange={(e) => handleLabelChange(e.target.value)}>
+                {labelsForChapter.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="selector-row">
-            <select value={selectedChapter} onChange={(e) => setSelectedChapter(e.target.value)}>
-              {chapters.map((chapter) => (
-                <option key={chapter} value={chapter}>
-                  {chapter}
-                </option>
-              ))}
-            </select>
-
-            <select value={selectedLabel} onChange={(e) => setSelectedLabel(e.target.value)}>
-              {labelsForChapter.map((label) => (
-                <option key={label} value={label}>
-                  {label}
-                </option>
-              ))}
-            </select>
+          <div className="selection-meta">
+            {template ? `${template.chapter} / ${template.label}` : "No template selected"}
           </div>
-        </div>
+        </header>
+      )}
 
-        <div className="selection-meta">
-          {template ? `${template.chapter} / ${template.label}` : "No template selected"}
-        </div>
-      </header>
+      {isLandscapeMobile && (
+        <>
+          <button
+            type="button"
+            className="mobile-menu-button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+          >
+            Menu
+          </button>
 
-      <main className="app-main">
+          <button
+            type="button"
+            className={`mobile-menu-backdrop${mobileMenuOpen ? " open" : ""}`}
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          />
+
+          <aside className={`mobile-drawer${mobileMenuOpen ? " open" : ""}`}>
+            <div className="mobile-drawer-head">
+              <strong>Template Menu</strong>
+              <button type="button" onClick={() => setMobileMenuOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="mobile-drawer-meta">
+              {template ? `${template.chapter} / ${template.label}` : "No template selected"}
+            </div>
+
+            <div className="mobile-drawer-selectors">
+              <label htmlFor="chapter-select-mobile">Chapter</label>
+              <select
+                id="chapter-select-mobile"
+                value={selectedChapter}
+                onChange={(e) => handleChapterChange(e.target.value)}
+              >
+                {chapters.map((chapter) => (
+                  <option key={chapter} value={chapter}>
+                    {chapter}
+                  </option>
+                ))}
+              </select>
+
+              <label htmlFor="label-select-mobile">Template</label>
+              <select
+                id="label-select-mobile"
+                value={selectedLabel}
+                onChange={(e) => handleLabelChange(e.target.value)}
+              >
+                {labelsForChapter.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mobile-drawer-controls">{controlsPanel}</div>
+          </aside>
+        </>
+      )}
+
+      <main className={`app-main${isLandscapeMobile ? " immersive-main" : ""}`}>
         <section className="lesson-area">
-          <AnimationEngine template={template} params={params} playing={playing} />
-        </section>
-
-        <aside className="controls-wrap">
-          <ControlPanel
+          <AnimationEngine
             template={template}
             params={params}
-            onChange={handleControlChange}
             playing={playing}
-            onTogglePlay={() => setPlaying((prev) => !prev)}
-            onReset={handleReset}
+            immersive={isLandscapeMobile}
           />
-        </aside>
+        </section>
+
+        {!isLandscapeMobile && (
+          <aside className="controls-wrap">
+            {controlsPanel}
+          </aside>
+        )}
       </main>
     </div>
   );

@@ -486,7 +486,7 @@ function LessonSteps({ currentStep }) {
   );
 }
 
-export default function AnimationEngine({ template, params, playing }) {
+export default function AnimationEngine({ template, params, playing, immersive = false }) {
   const backgroundOpacity = useMemo(
     () => template?.visual?.backgroundOpacity ?? 0.2,
     [template]
@@ -537,12 +537,56 @@ export default function AnimationEngine({ template, params, playing }) {
   const checkpoint = Array.isArray(template.checkpointQuestions) ? template.checkpointQuestions[0] : null;
   const checkpointResult = evaluateCheckpoint(checkpoint, sceneMetrics);
   const interactionHappened = didUserInteract(template, params);
-  const showDetails = !compactLandscape || detailsOpen;
+  const showDetails = (!compactLandscape || detailsOpen) && !immersive;
 
   let currentStep = 0;
   if (interactionHappened) currentStep = 1;
   if (interactionHappened && template.explainBottom) currentStep = 2;
   if (checkpoint && checkpointResult.passed) currentStep = 3;
+
+  const canvasElement = (
+    <div
+      className={`lesson-canvas-wrap${immersive ? " immersive-canvas-wrap" : ""}`}
+      style={{
+        background: isDiagram2D ? "#eef2f6" : `rgba(11, 18, 28, ${backgroundOpacity})`
+      }}
+    >
+      <Canvas
+        orthographic={isDiagram2D}
+        dpr={compactLandscape ? [1, 1.4] : [1, 2]}
+        camera={
+          isSpringMass
+            ? { position: [0, -0.22, 10], zoom: compactLandscape ? 116 : 126 }
+            : isPendulum
+              ? { position: [0, 0, 10], zoom: compactLandscape ? 136 : 148 }
+              : isParticle
+                ? { position: [0, 0, 10], zoom: compactLandscape ? 142 : 155 }
+                : isDoubleSpring
+                  ? { position: [0, -0.05, 10], zoom: compactLandscape ? 138 : 150 }
+                  : { position: [0, 0.7, 4], fov: 50 }
+        }
+      >
+        <RuntimeAnimator
+          template={template}
+          params={params}
+          playing={playing}
+          onSpringMetrics={isSpringMass ? setSpringMetrics : undefined}
+          onPendulumMetrics={isPendulum ? setPendulumMetrics : undefined}
+          onParticleMetrics={isParticle ? setParticleMetrics : undefined}
+          onDoubleSpringMetrics={isDoubleSpring ? setDoubleSpringMetrics : undefined}
+        />
+      </Canvas>
+
+      {isSpringMass && <SpringMassCanvasOverlay metrics={springMetrics} />}
+      {isPendulum && <PendulumCanvasOverlay metrics={pendulumMetrics} />}
+      {isParticle && <ParticleCanvasOverlay metrics={particleMetrics} />}
+      {isDoubleSpring && <DoubleSpringCanvasOverlay metrics={doubleSpringMetrics} />}
+    </div>
+  );
+
+  if (immersive) {
+    return <div className="lesson-shell immersive-canvas-shell">{canvasElement}</div>;
+  }
 
   return (
     <div className={`lesson-shell${compactLandscape ? " is-compact-landscape" : ""}`}>
@@ -568,43 +612,7 @@ export default function AnimationEngine({ template, params, playing }) {
 
       {showDetails && template.explainTop && <div className="lesson-note">{template.explainTop}</div>}
 
-      <div
-        className="lesson-canvas-wrap"
-        style={{
-          background: isDiagram2D ? "#eef2f6" : `rgba(11, 18, 28, ${backgroundOpacity})`
-        }}
-      >
-        <Canvas
-          orthographic={isDiagram2D}
-          dpr={compactLandscape ? [1, 1.4] : [1, 2]}
-          camera={
-            isSpringMass
-              ? { position: [0, -0.22, 10], zoom: compactLandscape ? 116 : 126 }
-              : isPendulum
-                ? { position: [0, 0, 10], zoom: compactLandscape ? 136 : 148 }
-                : isParticle
-                  ? { position: [0, 0, 10], zoom: compactLandscape ? 142 : 155 }
-                  : isDoubleSpring
-                    ? { position: [0, -0.05, 10], zoom: compactLandscape ? 138 : 150 }
-                    : { position: [0, 0.7, 4], fov: 50 }
-          }
-        >
-          <RuntimeAnimator
-            template={template}
-            params={params}
-            playing={playing}
-            onSpringMetrics={isSpringMass ? setSpringMetrics : undefined}
-            onPendulumMetrics={isPendulum ? setPendulumMetrics : undefined}
-            onParticleMetrics={isParticle ? setParticleMetrics : undefined}
-            onDoubleSpringMetrics={isDoubleSpring ? setDoubleSpringMetrics : undefined}
-          />
-        </Canvas>
-
-        {isSpringMass && <SpringMassCanvasOverlay metrics={springMetrics} />}
-        {isPendulum && <PendulumCanvasOverlay metrics={pendulumMetrics} />}
-        {isParticle && <ParticleCanvasOverlay metrics={particleMetrics} />}
-        {isDoubleSpring && <DoubleSpringCanvasOverlay metrics={doubleSpringMetrics} />}
-      </div>
+      {canvasElement}
 
       {showDetails && (
         <>
