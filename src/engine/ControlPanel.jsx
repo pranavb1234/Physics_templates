@@ -1,43 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-function toLabel(name) {
-  return name
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (ch) => ch.toUpperCase());
-}
-
-function sliderStep(cfg) {
-  if (typeof cfg.step === "number") return cfg.step;
-  const range = Number(cfg.max) - Number(cfg.min);
-  if (range >= 4) return 0.05;
-  return 0.01;
-}
-
-function SliderControl({ name, cfg, value, onChange }) {
-  return (
-    <section className="control-group">
-      <div className="control-header">
-        <label htmlFor={`ctrl-${name}`}>{toLabel(name)}</label>
-        <strong>{Number(value ?? cfg.default).toFixed(2)}</strong>
-      </div>
-
-      <input
-        id={`ctrl-${name}`}
-        type="range"
-        min={cfg.min}
-        max={cfg.max}
-        step={sliderStep(cfg)}
-        value={value ?? cfg.default}
-        onChange={(e) => onChange(name, Number(e.target.value))}
-      />
-
-      <div className="control-limits">
-        <span>{cfg.min}</span>
-        <span>{cfg.max}</span>
-      </div>
-    </section>
-  );
-}
+import RangeControl from "../ui/controls/RangeControl";
 
 export default function ControlPanel({
   template,
@@ -67,28 +29,34 @@ export default function ControlPanel({
 
   const primaryEntries = controlEntries.filter(([name]) => primaryKeys.includes(name));
   const advancedEntries = controlEntries.filter(([name]) => !primaryKeys.includes(name));
+  const advancedSectionId = "advanced-controls";
 
   return (
     <aside className="control-panel">
       <div className="control-intro">
-        <h3>Controls</h3>
-        <p>
+        <div className="control-title">Controls</div>
+        <div className="control-meta">
           {template.chapter} / {template.label}
-        </p>
+        </div>
       </div>
 
       <div className="control-actions">
-        <button type="button" className="control-button primary" onClick={onTogglePlay}>
+        <button
+          type="button"
+          className={`control-button ${playing ? "is-active" : ""}`}
+          onClick={onTogglePlay}
+          aria-pressed={playing}
+        >
           {playing ? "Pause" : "Play"}
         </button>
-        <button type="button" className="control-button" onClick={onReset}>
+        <button type="button" className="control-button secondary" onClick={onReset}>
           Reset
         </button>
       </div>
 
       <div className="control-section-title">Primary controls</div>
       {primaryEntries.map(([name, cfg]) => (
-        <SliderControl
+        <RangeControl
           key={name}
           name={name}
           cfg={cfg}
@@ -103,15 +71,17 @@ export default function ControlPanel({
             type="button"
             className="control-toggle"
             onClick={() => setShowAdvanced((prev) => !prev)}
+            aria-expanded={showAdvanced}
+            aria-controls={advancedSectionId}
           >
             {showAdvanced ? "Hide advanced controls" : "Show advanced controls"}
           </button>
 
           {showAdvanced && (
-            <div>
+            <div id={advancedSectionId}>
               <div className="control-section-title">Advanced controls</div>
               {advancedEntries.map(([name, cfg]) => (
-                <SliderControl
+                <RangeControl
                   key={name}
                   name={name}
                   cfg={cfg}

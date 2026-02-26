@@ -252,28 +252,64 @@ function RuntimeAnimator({
 function SpringMassCanvasOverlay({ metrics }) {
   return (
     <div className="canvas-overlay" style={overlayRootStyle}>
-      <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 8 }}>
-        <div style={chipStyle}>x = {formatNumber(metrics.x, 2)}</div>
-        <div style={{ ...chipStyle, color: "#be123c" }}>F = -kx = {formatNumber(metrics.force, 2)}</div>
+      {/* Top strip: key quantities */}
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          justifyContent: "center"
+        }}
+      >
+        <div style={chipStyle}>F = -kx</div>
+        <div style={{ ...chipStyle, color: "#2563eb" }}>x = {formatNumber(metrics.x, 2)}</div>
+        <div style={{ ...chipStyle, color: "#be123c" }}>F = {formatNumber(metrics.force, 2)}</div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "5%", top: "20%" }}>fixed wall</div>
-      <div style={{ ...calloutStyle, left: "29%", top: "20%" }}>spring (k)</div>
-      <div style={{ ...calloutStyle, left: "66%", top: "20%" }}>block (mass m)</div>
-      <div style={{ ...calloutStyle, left: "53%", top: "35%", transform: "translateX(-50%)" }}>
+      {/* Mid band: parts of the setup */}
+      <div style={{ ...calloutStyle, left: "10%", top: "30%" }}>fixed wall</div>
+      <div style={{ ...calloutStyle, left: "33%", top: "30%" }}>spring (k)</div>
+      <div style={{ ...calloutStyle, left: "74%", top: "30%" }}>block (mass m)</div>
+
+      <div style={{ ...calloutStyle, left: "53%", top: "46%", transform: "translateX(-50%)" }}>
         mean position (x = 0)
       </div>
-      <div style={{ ...calloutStyle, left: "48%", top: "52%", transform: "translateX(-50%)" }}>displacement x</div>
+
+      <div style={{ ...calloutStyle, left: "48%", top: "62%", transform: "translateX(-50%)" }}>displacement x</div>
       <div
         style={{
           ...calloutStyle,
           right: "6%",
-          top: "66%",
+          top: "62%",
           color: "#be123c",
           border: "1px solid #f0b7c3"
         }}
       >
         restoring force F = -kx
+      </div>
+
+      {/* Bottom hint: what to watch as controls change */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: 10,
+          transform: "translateX(-50%)",
+          fontSize: 11,
+          fontWeight: 500,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.9)",
+          border: "1px solid #d0d7de",
+          maxWidth: "86%",
+          textAlign: "center"
+        }}
+      >
+        As you adjust amplitude and speed, compare the block&apos;s motion with x and F badges at the top.
       </div>
     </div>
   );
@@ -313,18 +349,51 @@ function PendulumCanvasOverlay({ metrics }) {
 
   return (
     <div className="canvas-overlay" style={overlayRootStyle}>
-      <div style={{ position: "absolute", top: 10, right: 10, display: "grid", gap: 7, justifyItems: "end" }}>
-        <div style={chipStyle}>
+      {/* Top strip: key quantities */}
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          justifyContent: "center"
+        }}
+      >
+        <div style={{ ...chipStyle, color: "#2563eb" }}>
           {"\u03B8"} = {formatNumber(theta, 2)} rad
         </div>
         <div style={chipStyle}>{directionLabel}</div>
       </div>
 
+      {/* Mid band: parts of the setup */}
       <div style={{ ...calloutStyle, left: "50%", top: "3%", transform: "translateX(-50%)" }}>support</div>
-      <div style={{ ...calloutStyle, left: "15%", top: "46%" }}>string</div>
-      <div style={{ ...calloutStyle, left: "15%", top: "65%" }}>bob (mass m)</div>
-      <div style={{ ...calloutStyle, left: "50%", top: "67%", transform: "translateX(-50%)" }}>
+      <div style={{ ...calloutStyle, left: "16%", top: "42%" }}>string</div>
+      <div style={{ ...calloutStyle, left: "16%", top: "63%" }}>bob (mass m)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "70%", transform: "translateX(-50%)" }}>
         mean position (dashed)
+      </div>
+
+      {/* Bottom hint */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: 10,
+          transform: "translateX(-50%)",
+          fontSize: 11,
+          fontWeight: 500,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.9)",
+          border: "1px solid #d0d7de",
+          maxWidth: "86%",
+          textAlign: "center"
+        }}
+      >
+        Adjust amplitude and speed, then watch how the bob crosses the dashed mean line as {"\u03B8"} changes above.
       </div>
 
       <svg
@@ -403,7 +472,7 @@ function ParticleCanvasOverlay({ metrics }) {
         }}
       >
         <div style={chipStyle}>x(t) = A cos({"\u03C9"}t + {"\u03C6"})</div>
-        <div style={chipStyle}>x(t) = {formatNumber(metrics.x, 2)}</div>
+        <div style={{ ...chipStyle, color: "#2563eb" }}>x = {formatNumber(metrics.x, 2)}</div>
         <div style={chipStyle}>A = {formatNumber(metrics.amplitude, 2)}</div>
       </div>
 
@@ -416,7 +485,7 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "10%",
-          top: "59%",
+          top: "58%",
           transform: "translateX(-50%)",
           fontSize: "var(--overlay-limit-size, 28px)",
           fontWeight: 700,
@@ -429,7 +498,7 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "50%",
-          top: "59%",
+          top: "58%",
           transform: "translateX(-50%)",
           fontSize: "var(--overlay-origin-size, 34px)",
           fontWeight: 700,
@@ -442,7 +511,7 @@ function ParticleCanvasOverlay({ metrics }) {
         style={{
           position: "absolute",
           left: "90%",
-          top: "59%",
+          top: "58%",
           transform: "translateX(-50%)",
           fontSize: "var(--overlay-limit-size, 28px)",
           fontWeight: 700,
@@ -450,6 +519,25 @@ function ParticleCanvasOverlay({ metrics }) {
         }}
       >
         +A
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: 10,
+          transform: "translateX(-50%)",
+          fontSize: 11,
+          fontWeight: 500,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.9)",
+          border: "1px solid #d0d7de",
+          maxWidth: "86%",
+          textAlign: "center"
+        }}
+      >
+        Change A, speed or phase and relate the particle&apos;s position along the axis to x and A shown above.
       </div>
     </div>
   );
@@ -459,15 +547,34 @@ function DoubleSpringCanvasOverlay({ metrics }) {
   return (
     <div className="canvas-overlay" style={overlayRootStyle}>
       <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <div style={chipStyle}>x = {formatNumber(metrics.x, 2)}</div>
+        <div style={{ ...chipStyle, color: "#2563eb" }}>x = {formatNumber(metrics.x, 2)}</div>
         <div style={{ ...chipStyle, color: "#be123c" }}>Fnet = -2kx = {formatNumber(metrics.force, 2)}</div>
       </div>
 
-      <div style={{ ...calloutStyle, left: "15%", top: "21%" }}>left spring (k)</div>
-      <div style={{ ...calloutStyle, right: "13%", top: "21%" }}>right spring (k)</div>
-      <div style={{ ...calloutStyle, left: "50%", top: "18%", transform: "translateX(-50%)" }}>block (mass m)</div>
+      <div style={{ ...calloutStyle, left: "15%", top: "23%" }}>left spring (k)</div>
+      <div style={{ ...calloutStyle, right: "13%", top: "23%" }}>right spring (k)</div>
+      <div style={{ ...calloutStyle, left: "50%", top: "19%", transform: "translateX(-50%)" }}>block (mass m)</div>
       <div style={{ ...calloutStyle, left: "50%", top: "60%", transform: "translateX(-50%)" }}>O (equilibrium)</div>
       <div style={{ ...calloutStyle, left: "50%", top: "83%", transform: "translateX(-50%)" }}>displacement x</div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: 10,
+          transform: "translateX(-50%)",
+          fontSize: 11,
+          fontWeight: 500,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.9)",
+          border: "1px solid #d0d7de",
+          maxWidth: "86%",
+          textAlign: "center"
+        }}
+      >
+        Explore how changing amplitude, k or phase affects x and the combined restoring force Fnet at the top.
+      </div>
     </div>
   );
 }
